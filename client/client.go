@@ -1,33 +1,18 @@
 package main
 
+// Import needed packages
 import (
-	"encoding/json"
-	"io/ioutil"
+	"fmt"
+	"github.com/ActiveState/tail"
+	olConf "github.com/patyx7/okurulog/conf"
 	"log"
 	"net"
 	"os"
 	"strconv"
 )
 
-// Define okurulog internal constants (TODO: move config_dir const to a command flag)
-const (
-	OKURULOG_NAME         string = "OkuruLog"
-	OKURULOG_DESCRIPTION  string = "The small, simple, faster log shipper"
-	OKURULOG_VERSION      string = "0.0.1a"
-	OKURULOG_VERSION_NAME string = "Donskoy"
-	OKURULOG_AUTHOR       string = "Patrick Kuti <code@introspect.in>"
-	OKURULOG_CONFIG_DIR   string = "/etc/okurulog/"
-)
-
-// JSON struct for okurulog client configuration
-type ClientConfiguration struct {
-	ServerHostname            string
-	ServerPort                int
-	NumberOfTimesToRetry      int
-	RetryInterval             int
-	MaximumSizeOfLogFileCache int
-	LogDirectory              string
-}
+// Variable for global client configuration
+var OkuruLogClientConfiguration *olConf.ClientConfiguration = &olConf.ClientConfiguration{}
 
 // Struct for okurulog server
 type LogServer struct {
@@ -37,53 +22,14 @@ type LogServer struct {
 	Connection net.Conn
 }
 
-// Struct for okurulog client
-type LogClient struct {
-}
-
-// Struct for logfile
-type LogLine struct {
-	UUID string
-}
-
-// Struct for a line in a logfile
-type LogFile struct {
-	UUID string
-}
-
-// Variable for global client configuration
-var OkuruLogClientConfiguration *ClientConfiguration = &ClientConfiguration{}
-
-// setDefaults sets default configuration values
-func (self *ClientConfiguration) setDefaults() {
-	self.ServerHostname = "okurulog-master"
-	self.ServerPort = 7070
-	self.NumberOfTimesToRetry = 5
-	self.RetryInterval = 60
-	self.MaximumSizeOfLogFileCache = 5242880
-	self.LogDirectory = "/var/log/okurulog/"
-}
-
-// Init parses configuration files, compiles global variables
-// sets up logging and watchers
+// Init parses and loads configuration files
 func init() {
 
-	// define variables ahead of time
-	var err error
-
-	// Check if okurulog client configuration file exists
-	OkuruLogClientConfigurationFilePath := OKURULOG_CONFIG_DIR + "config.json"
-	_, err = os.Stat(OkuruLogClientConfigurationFilePath)
-	if err != nil {
-		log.Fatal("Error looking for configuration file: " + OkuruLogClientConfigurationFilePath)
-		os.Exit(1)
-	}
-
 	// Load default configuration
-	OkuruLogClientConfiguration.setDefaults()
+	OkuruLogClientConfiguration.SetDefaults()
 
-	// Attempt to load and parse json configuration file into global configuration
-	_loadConfig(OkuruLogClientConfigurationFilePath)
+	// Attempt to overload default configuration with parsed json configuration from file
+	OkuruLogClientConfiguration.LoadConfig()
 
 	// Check if log directory exists and is a directory
 	LogDirectory, err := os.Stat(OkuruLogClientConfiguration.LogDirectory)
@@ -95,26 +41,6 @@ func init() {
 		log.Fatal("Log directory is not a directory, error returned was: ", err)
 		os.Exit(1)
 	}
-
-}
-
-// _loadConfig loads values from a configuration file into global configuration
-func _loadConfig(OkuruLogClientConfigurationFilePath string) {
-
-	// Try to open the okurulog client configuration file and read it into global variable
-	OkuruLogClientConfigurationFile, err := ioutil.ReadFile(OkuruLogClientConfigurationFilePath)
-	if err != nil {
-		log.Fatal("Error reading configuration file, error returned was: ", err)
-		os.Exit(1)
-	}
-
-	// Decode JSON from configuration file and dump into global configuration to override default values
-	err = json.Unmarshal(OkuruLogClientConfigurationFile, OkuruLogClientConfiguration)
-	if err != nil {
-		log.Fatal("Error parsing configuration file, please ensure it is valid JSON. Error returned was: ", err)
-		os.Exit(1)
-	}
-
 }
 
 // connect tries to connect to the logserver's hostname and port,
@@ -162,6 +88,11 @@ func main() {
 	var LogServer *LogServer = &LogServer{}
 	LogServer.setHostname(OkuruLogClientConfiguration.ServerHostname)
 	LogServer.setPort(OkuruLogClientConfiguration.ServerPort)
+
+	t, _ := tail.TailFile("/var/log/cron", tail.Config{Follow: true})
+	for line := range t.Lines {
+		fmt.Println(line.Text)
+	}
 
 	LogServer.connect()
 
