@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/gob"
 	"fmt"
-	"log"
 	"net"
 )
 
@@ -31,10 +30,10 @@ func main() {
 
 	// define variables ahead of time
 	var err error
-	var LogFileHandler *os.File
+	//var LogFileHandler *os.File
 
 	fmt.Println("start")
-	ln, err := net.Listen("tcp", ":8080")
+	ln, err := net.Listen("tcp", ":7070")
 	if err != nil {
 		// handle error
 	}

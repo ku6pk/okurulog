@@ -8,7 +8,7 @@ import (
 	"os"
 )
 
-// Define okurulog internal constants (TODO: move config_dir const to a command flag or configuration file)
+// Define okurulog internal constants
 const (
 	OKURULOG_NAME         string = "OkuruLog"
 	OKURULOG_DESCRIPTION  string = "The smaller, simpler, faster log shipper."
